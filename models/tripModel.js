@@ -9,11 +9,12 @@ const tripSchema = mongoose.Schema({
     minlength: [10, "The trip name must be at least 10 characters long"]
   },
   duration: {
-    type: Date,
+    type: String,
     required: [true, "The trip must have a duration"]
   },
   origin: {
     type: String,
+    trim: true,
     required: [true, "The trip must have an origin"]
   },
   destination: {

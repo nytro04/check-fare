@@ -48,33 +48,7 @@ exports.createTrip = catchAsync(async (req, res, next) => {
   // const newTrip = new Trip({})
   // newTrip.save()
 
-  const {
-    tripName,
-    duration,
-    origin,
-    destination,
-    fare,
-    summary,
-    imageCover,
-    images,
-    createdAt,
-    arrivalTimes,
-    departureTimes
-  } = req.body;
-
-  const newTrip = Trip.create(
-    tripName,
-    duration,
-    origin,
-    destination,
-    fare,
-    summary,
-    imageCover,
-    images,
-    createdAt,
-    arrivalTimes,
-    departureTimes
-  );
+  const newTrip = await Trip.create(req.body);
 
   // send respond
   res.status(201).json({
@@ -82,5 +56,36 @@ exports.createTrip = catchAsync(async (req, res, next) => {
     data: {
       trip: newTrip
     }
+  });
+});
+
+exports.updateTrip = catchAsync(async (req, res, next) => {
+  const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true
+  });
+
+  if (!trip) {
+    return next(new AppError("No trip found with that ID", 404));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      trip
+    }
+  });
+});
+
+exports.deleteTrip = catchAsync(async (req, res, next) => {
+  const trip = await Trip.findByIdAndDelete(req.params.id);
+
+  if (!trip) {
+    return next(new AppError("No trip found with that ID", 404));
+  }
+
+  res.status(204).json({
+    status: "success",
+    data: null
   });
 });

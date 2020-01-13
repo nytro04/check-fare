@@ -2,7 +2,9 @@ const express = require("express");
 const {
   getAllTrips,
   getTrip,
-  createTrip
+  createTrip,
+  updateTrip,
+  deleteTrip
 } = require("./../controllers/tripController");
 
 const router = express.Router();
@@ -12,8 +14,10 @@ router
   .get(getAllTrips)
   .post(createTrip);
 
-router.route("/:id").get(getTrip);
-// .patch(updateTrip)
-// .delete(deleteTrip);
+router
+  .route("/:id")
+  .get(getTrip)
+  .patch(updateTrip)
+  .delete(deleteTrip);
 
 module.exports = router;

@@ -2,7 +2,8 @@ const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 const User = require("./../models/userModel");
 const catchAsync = require("./../utils/catchAsync");
-const AppError = require("./../utils/apiFeatures");
+const AppError = require("./../utils/appError");
+const sendEmail = require("./../utils/email");
 
 const signToken = id => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -13,6 +14,20 @@ const signToken = id => {
 
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
+
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    //secure: true,
+    httpOnly: true
+  };
+
+  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+
+  res.cookie("jwt", token, cookieOptions);
+
+  user.password = undefined;
 
   res.status(statusCode).json({
     status: "success",
@@ -96,4 +111,69 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = currentAuthUser;
 
   next();
+});
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // restrict to some roles, eg. sys-admin, sellers
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError(
+          "You do not have the right permissions to perform this action, contact the system admin",
+          403
+        )
+      );
+    }
+
+    next();
+  };
+};
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1. get user based on email
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new AppError("There is no user with this email", 404));
+  }
+
+  // 2. Generate random reset token
+  const resetToken = user.createPasswordResetToken();
+
+  await user.save({ validateBeforeSave: false });
+
+  // 3. Send message to user's email
+  const resetURL = `${req.protocol}://${req.get(
+    "host"
+  )}/api/v1/users/resetPassword/${resetToken}`;
+
+  const message = `Forgot your password? Please visit this link:
+  ${resetURL} to reset your password.
+   \n If you didn't forget your password, Ignore this email`;
+
+  try {
+    await sendEmail({
+      email,
+      subject: "Password reset token(Valid for 15 minutes)",
+      message
+    });
+
+    res.send(200).json({
+      status: "success",
+      message: "Token sent to email"
+    });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new AppError(
+        "There was an error sending the email, try again later",
+        5000
+      )
+    );
+  }
 });

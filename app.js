@@ -4,7 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
-const hpp = require("hpp");
+// const hpp = require("hpp");
 
 const productRouter = require("./routes/productRoute");
 const userRouter = require("./routes/userRoutes");
@@ -33,6 +33,9 @@ app.use("/api", limiter);
 
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
+
+// Data sanitization against xss
+app.use(xss());
 
 // Body parser, reading data from body into req.body
 app.use(express.json());
